@@ -3,14 +3,15 @@ package com.bulewifi.sc803;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,83 +20,65 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
-import com.bulewifi.sc803.model.LogItem;
-
-import android.text.TextUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class MainActivity extends AppCompatActivity implements
-        LogManager.OnLogUpdateListener,
-        AutomationController.StateChangeListener {
+public class MainActivity extends AppCompatActivity implements AutomationController.StateChangeListener {
 
     private static final int REQ_PERMISSIONS = 2001;
 
-    private TextView tvAutomationState;
-    private TextView tvTargetDevice;
-    private TextView tvBtStatus;
-    private TextView tvAirplaneStatus;
-    private TextView tvAccessibilityStatus;
-    private TextView tvLogSummary;
+    private TextView tvHeroStatus;
+    private TextView tvHeroDetail;
+    private Button btnMasterAuto;
 
-    private Button btnOpenAccessibility;
-    private Button btnDeviceAdmin;
-    private Button btnToggleAuto;
-    private Button btnSelectDevice;
+    private TextView tvTargetDevices;
+    private Button btnEditDevices;
 
-    private Button btnAirplaneOff;
-    private Button btnAirplaneOn;
-    private Button btnBluetoothOn;
-    private Button btnHotspotOn;
-    private Button btnHotspotOff;
+    private Button btnAccAction;
+    private Button btnAdminAction;
+    private TextView tvHwState;
 
-    private Button btnCopyLogs;
-    private Button btnClearLogs;
-    private Button btnRefresh;
-    private RecyclerView rvLogs;
+    private TextView tvToggleAdvanced;
+    private LinearLayout layoutAdvancedControls;
+    private Button btnTestAirplaneOff;
+    private Button btnTestAirplaneOn;
+    private Button btnTestHotspotOn;
+    private Button btnTestHotspotOff;
+    private Button btnTestBtOn;
 
-    private LogAdapter mLogAdapter;
-    private LinearLayoutManager mLayoutManager;
     private BluetoothAdapter mBluetoothAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Wake screen and dismiss lockscreen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
         } else {
             getWindow().addFlags(
-                    android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-                    android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                    android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
             );
         }
 
         setContentView(R.layout.activity_main);
 
         initViews();
-        setupRecyclerView();
         setupListeners();
         checkAndRequestPermissions();
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        // Register listeners
-        LogManager.getInstance().registerListener(this);
+        // Register automation listener
         AutomationController.getInstance(this).registerListener(this);
 
-        // Load existing logs
-        mLogAdapter.setItems(LogManager.getInstance().getLogsSnapshot());
-
-        // Auto-start probe service if not already running
+        // Auto-start probe background service
         if (!BluetoothProbeService.isRunning()) {
             BluetoothProbeService.start(this);
         }
@@ -104,58 +87,29 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void initViews() {
-        tvAutomationState = findViewById(R.id.tv_automation_state);
-        tvTargetDevice = findViewById(R.id.tv_target_device);
-        tvBtStatus = findViewById(R.id.tv_bt_status);
-        tvAirplaneStatus = findViewById(R.id.tv_airplane_status);
-        tvAccessibilityStatus = findViewById(R.id.tv_accessibility_status);
-        tvLogSummary = findViewById(R.id.tv_log_summary);
+        tvHeroStatus = findViewById(R.id.tv_hero_status);
+        tvHeroDetail = findViewById(R.id.tv_hero_detail);
+        btnMasterAuto = findViewById(R.id.btn_master_auto);
 
-        btnOpenAccessibility = findViewById(R.id.btn_open_accessibility);
-        btnDeviceAdmin = findViewById(R.id.btn_device_admin);
-        btnToggleAuto = findViewById(R.id.btn_toggle_auto);
-        btnSelectDevice = findViewById(R.id.btn_select_device);
+        tvTargetDevices = findViewById(R.id.tv_target_devices);
+        btnEditDevices = findViewById(R.id.btn_edit_devices);
 
-        btnAirplaneOff = findViewById(R.id.btn_airplane_off);
-        btnAirplaneOn = findViewById(R.id.btn_airplane_on);
-        btnBluetoothOn = findViewById(R.id.btn_bluetooth_on);
-        btnHotspotOn = findViewById(R.id.btn_hotspot_on);
-        btnHotspotOff = findViewById(R.id.btn_hotspot_off);
+        btnAccAction = findViewById(R.id.btn_acc_action);
+        btnAdminAction = findViewById(R.id.btn_admin_action);
+        tvHwState = findViewById(R.id.tv_hw_state);
 
-        btnCopyLogs = findViewById(R.id.btn_copy_logs);
-        btnClearLogs = findViewById(R.id.btn_clear_logs);
-        btnRefresh = findViewById(R.id.btn_refresh);
-        rvLogs = findViewById(R.id.rv_logs);
-    }
-
-    private void setupRecyclerView() {
-        mLayoutManager = new LinearLayoutManager(this);
-        mLayoutManager.setStackFromEnd(true); // Latest logs at bottom
-        rvLogs.setLayoutManager(mLayoutManager);
-
-        mLogAdapter = new LogAdapter();
-        rvLogs.setAdapter(mLogAdapter);
-
-        DividerItemDecoration divider = new DividerItemDecoration(this, DividerItemDecoration.VERTICAL);
-        rvLogs.addItemDecoration(divider);
+        tvToggleAdvanced = findViewById(R.id.tv_toggle_advanced);
+        layoutAdvancedControls = findViewById(R.id.layout_advanced_controls);
+        btnTestAirplaneOff = findViewById(R.id.btn_test_airplane_off);
+        btnTestAirplaneOn = findViewById(R.id.btn_test_airplane_on);
+        btnTestHotspotOn = findViewById(R.id.btn_test_hotspot_on);
+        btnTestHotspotOff = findViewById(R.id.btn_test_hotspot_off);
+        btnTestBtOn = findViewById(R.id.btn_test_bt_on);
     }
 
     private void setupListeners() {
-        btnOpenAccessibility.setOnClickListener(v -> {
-            Toast.makeText(this, "请在列表中找到并开启「SC803 自动热点辅助服务」", Toast.LENGTH_LONG).show();
-            SettingsHelper.openAccessibilitySettings(this);
-        });
-
-        btnDeviceAdmin.setOnClickListener(v -> {
-            if (ScreenHelper.isDeviceAdminActive(this)) {
-                Toast.makeText(this, "自动熄屏权限已处于激活状态", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "请在弹出页面中点击「激活」以启用自动熄屏", Toast.LENGTH_LONG).show();
-                ScreenHelper.openDeviceAdminSettings(this);
-            }
-        });
-
-        btnToggleAuto.setOnClickListener(v -> {
+        // Master Auto Mode Toggle
+        btnMasterAuto.setOnClickListener(v -> {
             DevicePreferences prefs = DevicePreferences.getInstance(this);
             boolean newEnabled = !prefs.isAutoModeEnabled();
             if (newEnabled && !HotspotAccessibilityService.isServiceConnected()) {
@@ -168,18 +122,51 @@ public class MainActivity extends AppCompatActivity implements
             updateUiStatus();
         });
 
-        btnSelectDevice.setOnClickListener(v -> showDeviceSelectDialog());
+        // Edit Target Devices
+        btnEditDevices.setOnClickListener(v -> showDeviceSelectDialog());
 
-        btnAirplaneOff.setOnClickListener(v -> executeWithAccessibility("退出飞行模式", service ->
+        // Accessibility Permission Action
+        btnAccAction.setOnClickListener(v -> {
+            if (HotspotAccessibilityService.isServiceConnected()) {
+                Toast.makeText(this, "无障碍辅助服务已就绪！", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "请在列表中找到并开启「SC803 自动热点辅助服务」", Toast.LENGTH_LONG).show();
+                SettingsHelper.openAccessibilitySettings(this);
+            }
+        });
+
+        // Device Admin Permission Action
+        btnAdminAction.setOnClickListener(v -> {
+            if (ScreenHelper.isDeviceAdminActive(this)) {
+                Toast.makeText(this, "自动熄屏权限已就绪！", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "请点击「激活」以启用自动化完成自动熄屏", Toast.LENGTH_LONG).show();
+                ScreenHelper.openDeviceAdminSettings(this);
+            }
+        });
+
+        // Toggle Advanced Controls
+        tvToggleAdvanced.setOnClickListener(v -> {
+            if (layoutAdvancedControls.getVisibility() == View.VISIBLE) {
+                layoutAdvancedControls.setVisibility(View.GONE);
+                tvToggleAdvanced.setText("▼ 高级手动测试 (排查时展开)");
+            } else {
+                layoutAdvancedControls.setVisibility(View.VISIBLE);
+                tvToggleAdvanced.setText("▲ 收起高级测试选项");
+            }
+        });
+
+        // Advanced Manual Test Buttons
+        btnTestAirplaneOff.setOnClickListener(v -> executeWithAccessibility("退出飞行模式", service ->
                 service.setAirplaneMode(false, true, createCallback("退出飞行模式"))));
 
-        btnAirplaneOn.setOnClickListener(v -> executeWithAccessibility("进入飞行模式", service ->
+        btnTestAirplaneOn.setOnClickListener(v -> executeWithAccessibility("进入飞行模式", service ->
                 service.setAirplaneMode(true, true, createCallback("进入飞行模式"))));
 
-        btnBluetoothOn.setOnClickListener(v -> executeWithAccessibility("开启蓝牙", service ->
+        btnTestBtOn.setOnClickListener(v -> executeWithAccessibility("开启蓝牙", service ->
                 service.setBluetooth(true, true, createCallback("开启蓝牙"))));
 
-        btnHotspotOn.setOnClickListener(v -> {
+        btnTestHotspotOn.setOnClickListener(v -> {
             if (SettingsHelper.isAirplaneModeOn(this)) {
                 Toast.makeText(this, "⚠️ 当前处于飞行模式，WLAN热点已被系统底层禁用！请先点击「退出飞行模式」。", Toast.LENGTH_LONG).show();
                 return;
@@ -188,20 +175,8 @@ public class MainActivity extends AppCompatActivity implements
                     service.setHotspot(true, true, createCallback("开启 WLAN 热点")));
         });
 
-        btnHotspotOff.setOnClickListener(v -> executeWithAccessibility("关闭 WLAN 热点", service ->
+        btnTestHotspotOff.setOnClickListener(v -> executeWithAccessibility("关闭 WLAN 热点", service ->
                 service.setHotspot(false, true, createCallback("关闭 WLAN 热点"))));
-
-        btnCopyLogs.setOnClickListener(v -> copyLogsToClipboard());
-
-        btnClearLogs.setOnClickListener(v -> {
-            LogManager.getInstance().clearLogs();
-            Toast.makeText(this, "日志已清空", Toast.LENGTH_SHORT).show();
-        });
-
-        btnRefresh.setOnClickListener(v -> {
-            updateUiStatus();
-            Toast.makeText(this, "状态已刷新", Toast.LENGTH_SHORT).show();
-        });
     }
 
     private void showDeviceSelectDialog() {
@@ -252,13 +227,11 @@ public class MainActivity extends AppCompatActivity implements
         builder.setMultiChoiceItems(itemArray, checkedItems, (dialog, which, isChecked) -> {
             checkedItems[which] = isChecked;
             if (which == 0 && isChecked) {
-                // If "ALL" is checked, uncheck all individual devices
                 for (int i = 1; i < count; i++) {
                     checkedItems[i] = false;
                     ((AlertDialog) dialog).getListView().setItemChecked(i, false);
                 }
             } else if (which != 0 && isChecked) {
-                // If a specific device is checked, uncheck "ALL"
                 checkedItems[0] = false;
                 ((AlertDialog) dialog).getListView().setItemChecked(0, false);
             }
@@ -301,9 +274,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private void executeWithAccessibility(String actionName, ServiceAction action) {
         if (!HotspotAccessibilityService.isServiceConnected()) {
-            boolean systemEnabled = SettingsHelper.isAccessibilityServiceEnabled(this, HotspotAccessibilityService.class);
-            String tip = systemEnabled ? "服务已被系统挂起，请重新开关一次无障碍服务" : "请先开启系统无障碍服务！";
-            Toast.makeText(this, tip, Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "请先开启系统无障碍服务！", Toast.LENGTH_LONG).show();
             SettingsHelper.openAccessibilitySettings(this);
             return;
         }
@@ -336,74 +307,69 @@ public class MainActivity extends AppCompatActivity implements
         DevicePreferences prefs = DevicePreferences.getInstance(this);
         AutomationController controller = AutomationController.getInstance(this);
 
-        // Automation state
+        // 1. Hero State Card
         AutomationController.State state = controller.getCurrentState();
         int remainingGrace = controller.getRemainingGraceSeconds();
         if (state == AutomationController.State.DISCONNECT_GRACE && remainingGrace > 0) {
-            tvAutomationState.setText("自动化状态: 宽限断开中 (剩余 " + remainingGrace + " 秒)");
+            tvHeroStatus.setText("断开倒计时: " + remainingGrace + " 秒");
+            tvHeroDetail.setText("目标设备已断开，若未重连将在 " + remainingGrace + " 秒后关闭热点省电");
         } else {
-            tvAutomationState.setText("自动化状态: " + state.getDescription());
+            tvHeroStatus.setText(state.getDescription());
+            if (state == AutomationController.State.IDLE) {
+                tvHeroDetail.setText("飞行模式 ON · 蓝牙待命 · 热点关闭 (极度省电)");
+            } else if (state == AutomationController.State.ONLINE) {
+                tvHeroDetail.setText("4G 数据已连通 · 热点正常发射中");
+            } else {
+                tvHeroDetail.setText("自动化流水线调度中...");
+            }
         }
 
-        // Target device
-        String summary = prefs.getTargetNamesSummary();
-        tvTargetDevice.setText("目标设备: " + summary + " (点击可多选)");
-
-        // Auto mode toggle button
+        // 2. Master Auto Button
         boolean autoEnabled = prefs.isAutoModeEnabled();
-        btnToggleAuto.setText(autoEnabled ? "自动控制: 已开启 (RUNNING)" : "自动控制: 已停止 (点击启动)");
-
-        // Bluetooth adapter state
-        if (mBluetoothAdapter == null) {
-            tvBtStatus.setText("蓝牙: 不可用");
+        if (autoEnabled) {
+            btnMasterAuto.setText("● 自动控制运行中 (点击暂停)");
+            btnMasterAuto.setBackgroundResource(R.drawable.btn_black);
+            btnMasterAuto.setTextColor(Color.WHITE);
         } else {
-            boolean enabled = mBluetoothAdapter.isEnabled();
-            int btState = mBluetoothAdapter.getState();
-            tvBtStatus.setText(String.format("蓝牙: %s (%s)",
-                    enabled ? "ON" : "OFF",
-                    BluetoothEventReceiver.getBtStateString(btState)));
+            btnMasterAuto.setText("▶ 开启全自动热点控制");
+            btnMasterAuto.setBackgroundResource(R.drawable.btn_border);
+            btnMasterAuto.setTextColor(Color.BLACK);
         }
 
-        // Airplane mode state
-        boolean isAirplane = SettingsHelper.isAirplaneModeOn(this);
-        tvAirplaneStatus.setText(isAirplane ? "飞行: ON (热点禁用)" : "飞行: OFF (正常)");
+        // 3. Target Devices
+        String summary = prefs.getTargetNamesSummary();
+        tvTargetDevices.setText(summary);
 
-        // Accessibility state
-        boolean isConnected = HotspotAccessibilityService.isServiceConnected();
-        boolean isSysEnabled = SettingsHelper.isAccessibilityServiceEnabled(this, HotspotAccessibilityService.class);
-
-        if (isConnected) {
-            tvAccessibilityStatus.setText("无障碍服务: 已就绪 (ACTIVE)");
-            btnOpenAccessibility.setVisibility(View.GONE);
-        } else if (isSysEnabled) {
-            tvAccessibilityStatus.setText("无障碍服务: 系统已开 (等待绑定连接)");
-            btnOpenAccessibility.setVisibility(View.VISIBLE);
-            btnOpenAccessibility.setText("无障碍服务连接中... (若无响应点击重开)");
+        // 4. Accessibility Service state
+        boolean isAccConnected = HotspotAccessibilityService.isServiceConnected();
+        boolean isAccSysEnabled = SettingsHelper.isAccessibilityServiceEnabled(this, HotspotAccessibilityService.class);
+        if (isAccConnected) {
+            btnAccAction.setText("● 已就绪");
+            btnAccAction.setTextColor(Color.BLACK);
+        } else if (isAccSysEnabled) {
+            btnAccAction.setText("连接中...");
+            btnAccAction.setTextColor(Color.DKGRAY);
         } else {
-            tvAccessibilityStatus.setText("无障碍服务: 未开启 (免Root必需)");
-            btnOpenAccessibility.setVisibility(View.VISIBLE);
-            btnOpenAccessibility.setText("⚠️ 点击跳转开启系统无障碍服务");
+            btnAccAction.setText("点击授权");
+            btnAccAction.setTextColor(Color.BLACK);
         }
 
-        // Device Admin state for auto screen off
+        // 5. Device Admin state
         boolean isAdmin = ScreenHelper.isDeviceAdminActive(this);
         if (isAdmin) {
-            btnDeviceAdmin.setText("自动熄屏: 已激活 (流程完成自动关屏)");
+            btnAdminAction.setText("● 已激活");
+            btnAdminAction.setTextColor(Color.BLACK);
         } else {
-            btnDeviceAdmin.setText("🔒 开启自动熄屏权限 (热点开启后自动息屏)");
+            btnAdminAction.setText("点击激活");
+            btnAdminAction.setTextColor(Color.BLACK);
         }
 
-        tvLogSummary.setText(String.format("事件日志 (共 %d 条):", mLogAdapter.getItemCount()));
-    }
-
-    private void copyLogsToClipboard() {
-        String allLogs = LogManager.getInstance().getAllLogsAsText();
-        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (cm != null) {
-            ClipData clip = ClipData.newPlainText("SC803_BT_Logs", allLogs);
-            cm.setPrimaryClip(clip);
-            Toast.makeText(this, "日志已复制到剪贴板！", Toast.LENGTH_SHORT).show();
-        }
+        // 6. Hardware status
+        boolean btEnabled = mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
+        boolean isAirplane = SettingsHelper.isAirplaneModeOn(this);
+        tvHwState.setText(String.format("蓝牙硬件: %s | 飞行模式: %s",
+                btEnabled ? "ON" : "OFF",
+                isAirplane ? "ON" : "OFF"));
     }
 
     private void checkAndRequestPermissions() {
@@ -429,22 +395,8 @@ public class MainActivity extends AppCompatActivity implements
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_PERMISSIONS) {
-            LogManager.getInstance().addInfoLog("权限申请结果返回");
             updateUiStatus();
         }
-    }
-
-    @Override
-    public void onLogAdded(LogItem item) {
-        mLogAdapter.addItem(item);
-        rvLogs.smoothScrollToPosition(mLogAdapter.getItemCount() - 1);
-        tvLogSummary.setText(String.format("事件日志 (共 %d 条):", mLogAdapter.getItemCount()));
-    }
-
-    @Override
-    public void onLogsCleared() {
-        mLogAdapter.clear();
-        tvLogSummary.setText("事件日志 (共 0 条):");
     }
 
     @Override
@@ -466,7 +418,6 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        LogManager.getInstance().unregisterListener(this);
         AutomationController.getInstance(this).unregisterListener(this);
     }
 }

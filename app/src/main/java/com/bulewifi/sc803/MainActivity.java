@@ -25,7 +25,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bulewifi.sc803.model.LogItem;
 
+import android.text.TextUtils;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -185,36 +187,87 @@ public class MainActivity extends AppCompatActivity implements
             return;
         }
 
-        Set<BluetoothDevice> bonded = mBluetoothAdapter.getBondedDevices();
-        List<String> items = new ArrayList<>();
-        List<String> macs = new ArrayList<>();
-        List<String> names = new ArrayList<>();
+        DevicePreferences prefs = DevicePreferences.getInstance(this);
+        Set<String> savedMacs = prefs.getTargetMacs();
+        boolean isAllSelected = savedMacs.isEmpty() || savedMacs.contains("ALL");
 
-        // Option 0: Any device
-        items.add("⚡ 监听任意蓝牙设备 (调试模式)");
-        macs.add("ALL");
-        names.add("任意设备");
+        Set<BluetoothDevice> bonded = mBluetoothAdapter.getBondedDevices();
+        List<String> displayItems = new ArrayList<>();
+        List<String> macList = new ArrayList<>();
+        List<String> nameList = new ArrayList<>();
+
+        displayItems.add("⚡ 监听任意蓝牙设备 (调试模式)");
+        macList.add("ALL");
+        nameList.add("任意设备");
 
         if (bonded != null) {
             for (BluetoothDevice dev : bonded) {
                 String devName = dev.getName() != null ? dev.getName() : "(Unknown)";
                 String devMac = dev.getAddress();
-                items.add("📱 " + devName + "\n   " + devMac);
-                macs.add(devMac);
-                names.add(devName);
+                displayItems.add("📱 " + devName + " (" + devMac + ")");
+                macList.add(devMac);
+                nameList.add(devName);
             }
         }
 
-        String[] itemArray = items.toArray(new String[0]);
+        int count = displayItems.size();
+        CharSequence[] itemArray = displayItems.toArray(new CharSequence[0]);
+        boolean[] checkedItems = new boolean[count];
+
+        if (isAllSelected) {
+            checkedItems[0] = true;
+        } else {
+            for (int i = 1; i < count; i++) {
+                if (savedMacs.contains(macList.get(i).toUpperCase())) {
+                    checkedItems[i] = true;
+                }
+            }
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("选择触发热点的目标设备");
-        builder.setItems(itemArray, (dialog, which) -> {
-            String selectedMac = macs.get(which);
-            String selectedName = names.get(which);
-            DevicePreferences.getInstance(this).setTargetDevice(selectedMac, selectedName);
-            Toast.makeText(this, "已锁定目标: " + selectedName, Toast.LENGTH_SHORT).show();
+        builder.setTitle("选择目标蓝牙设备 (可勾选多个)");
+        builder.setMultiChoiceItems(itemArray, checkedItems, (dialog, which, isChecked) -> {
+            checkedItems[which] = isChecked;
+            if (which == 0 && isChecked) {
+                // If "ALL" is checked, uncheck all individual devices
+                for (int i = 1; i < count; i++) {
+                    checkedItems[i] = false;
+                    ((AlertDialog) dialog).getListView().setItemChecked(i, false);
+                }
+            } else if (which != 0 && isChecked) {
+                // If a specific device is checked, uncheck "ALL"
+                checkedItems[0] = false;
+                ((AlertDialog) dialog).getListView().setItemChecked(0, false);
+            }
+        });
+
+        builder.setPositiveButton("确定保存", (dialog, which) -> {
+            Set<String> selectedMacs = new HashSet<>();
+            List<String> selectedNames = new ArrayList<>();
+
+            if (checkedItems[0]) {
+                selectedMacs.add("ALL");
+                selectedNames.add("任意设备");
+            } else {
+                for (int i = 1; i < count; i++) {
+                    if (checkedItems[i]) {
+                        selectedMacs.add(macList.get(i));
+                        selectedNames.add(nameList.get(i));
+                    }
+                }
+            }
+
+            if (selectedMacs.isEmpty()) {
+                selectedMacs.add("ALL");
+                selectedNames.add("任意设备");
+            }
+
+            String summary = TextUtils.join(", ", selectedNames);
+            prefs.setTargetDevices(selectedMacs, summary);
+            Toast.makeText(this, "已保存目标设备: " + summary, Toast.LENGTH_SHORT).show();
             updateUiStatus();
         });
+
         builder.setNegativeButton("取消", null);
         builder.show();
     }
@@ -270,13 +323,8 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         // Target device
-        String targetName = prefs.getTargetName();
-        String targetMac = prefs.getTargetMac();
-        if (targetMac.isEmpty() || "ALL".equalsIgnoreCase(targetMac)) {
-            tvTargetDevice.setText("目标设备: 任意连接均触发热点 (点击可指定)");
-        } else {
-            tvTargetDevice.setText("目标设备: " + targetName + " [" + targetMac + "]");
-        }
+        String summary = prefs.getTargetNamesSummary();
+        tvTargetDevice.setText("目标设备: " + summary + " (点击可多选)");
 
         // Auto mode toggle button
         boolean autoEnabled = prefs.isAutoModeEnabled();

@@ -42,6 +42,7 @@ public class AutomationController {
     private final Context mContext;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final List<StateChangeListener> mListeners = new CopyOnWriteArrayList<>();
+    private final java.util.Set<String> mActiveConnectedTargetDevices = new java.util.HashSet<>();
 
     private State mCurrentState = State.IDLE;
     private Runnable mGraceRunnable;
@@ -109,18 +110,22 @@ public class AutomationController {
             return;
         }
 
+        mActiveConnectedTargetDevices.add(address.trim().toUpperCase());
+        int activeCount = mActiveConnectedTargetDevices.size();
+
         LogManager.getInstance().addLog("AUTO", "TargetConnected", address,
-                "目标设备连接成功: " + name + " (" + address + ")");
+                "目标设备连接成功: " + name + " (" + address + ") [当前在线目标: " + activeCount + "台]");
 
         // If in disconnect grace countdown, cancel shutdown and return to ONLINE
         if (mCurrentState == State.DISCONNECT_GRACE) {
             cancelGraceCountdown();
-            transitionTo(State.ONLINE, "目标设备在宽限期内重新连接，取消关机并保持热点");
+            transitionTo(State.ONLINE, "目标设备在宽限期内重新连接，取消关机并保持热点 (在线目标: " + activeCount + "台)");
             return;
         }
 
         if (mCurrentState == State.ONLINE) {
-            LogManager.getInstance().addLog("AUTO", "AlreadyOnline", address, "热点已处于在线状态，无需重复启动");
+            LogManager.getInstance().addLog("AUTO", "AlreadyOnline", address,
+                    "热点已处于在线状态，新目标设备接入: " + name + " (在线目标: " + activeCount + "台)");
             return;
         }
 
@@ -193,8 +198,17 @@ public class AutomationController {
             return;
         }
 
+        mActiveConnectedTargetDevices.remove(address.trim().toUpperCase());
+        int remaining = mActiveConnectedTargetDevices.size();
+
         LogManager.getInstance().addLog("AUTO", "TargetDisconnected", address,
-                "目标设备断开: " + name + " (" + address + ")");
+                "目标设备断开: " + name + " (" + address + ") [剩余在线目标: " + remaining + "台]");
+
+        if (remaining > 0) {
+            LogManager.getInstance().addLog("AUTO", "KeepOnline", address,
+                    "仍有 " + remaining + " 台目标设备保持连接，热点继续保持在线！");
+            return;
+        }
 
         if (mCurrentState == State.IDLE || mCurrentState == State.ENTERING_AIRPLANE || mCurrentState == State.RESTORING_BLUETOOTH) {
             LogManager.getInstance().addLog("AUTO", "IdleState", "--", "当前已处于待机或关机流程，无需重复处理");
@@ -263,6 +277,7 @@ public class AutomationController {
                             HotspotAccessibilityService.getInstance().setBluetooth(true, false, new HotspotAccessibilityService.ActionListener() {
                                 @Override
                                 public void onSuccess(String action, boolean desiredState) {
+                                    mActiveConnectedTargetDevices.clear();
                                     transitionTo(State.IDLE, "待机状态已达成: 飞行模式 ON + 蓝牙 ON + 热点 OFF (极度省电)");
                                 }
 

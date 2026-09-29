@@ -96,6 +96,24 @@ public class HotspotAccessibilityService extends AccessibilityService {
         LogManager.getInstance().addLog("REQUEST", "WLAN_Hotspot", "--",
                 "Request desired=" + enable + ", returnToApp=" + returnToApp);
 
+        // Pre-condition: Hotspot hardware is completely disabled when Airplane Mode is ON
+        if (enable && SettingsHelper.isAirplaneModeOn(this)) {
+            String errorMsg = "当前处于飞行模式，WLAN热点已被系统底层禁用！必须先退出飞行模式。";
+            LogManager.getInstance().addErrorLog(errorMsg);
+            if (listener != null) {
+                listener.onFailure("HOTSPOT", errorMsg);
+            }
+            return;
+        }
+
+        if (!enable && SettingsHelper.isAirplaneModeOn(this)) {
+            LogManager.getInstance().addLog("VERIFY", "Hotspot", "--", "处于飞行模式，热点已被系统关闭 (OK)");
+            if (listener != null) {
+                listener.onSuccess("HOTSPOT", false);
+            }
+            return;
+        }
+
         mPendingAction = new PendingAction("HOTSPOT", enable, 8000, returnToApp, listener);
         SettingsHelper.openTetherSettings(this);
 

@@ -28,6 +28,7 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
     private static final int REQ_PERMISSIONS = 2001;
 
     private TextView tvBtStatus;
+    private TextView tvAirplaneStatus;
     private TextView tvAccessibilityStatus;
     private TextView tvServiceStatus;
     private TextView tvLogSummary;
@@ -76,6 +77,7 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
 
     private void initViews() {
         tvBtStatus = findViewById(R.id.tv_bt_status);
+        tvAirplaneStatus = findViewById(R.id.tv_airplane_status);
         tvAccessibilityStatus = findViewById(R.id.tv_accessibility_status);
         tvServiceStatus = findViewById(R.id.tv_service_status);
         tvLogSummary = findViewById(R.id.tv_log_summary);
@@ -120,8 +122,14 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
         btnBluetoothOn.setOnClickListener(v -> executeWithAccessibility("开启蓝牙", service ->
                 service.setBluetooth(true, true, createCallback("开启蓝牙"))));
 
-        btnHotspotOn.setOnClickListener(v -> executeWithAccessibility("开启 WLAN 热点", service ->
-                service.setHotspot(true, true, createCallback("开启 WLAN 热点"))));
+        btnHotspotOn.setOnClickListener(v -> {
+            if (SettingsHelper.isAirplaneModeOn(this)) {
+                Toast.makeText(this, "⚠️ 当前处于飞行模式，WLAN热点已被系统底层禁用！请先点击「退出飞行模式」。", Toast.LENGTH_LONG).show();
+                return;
+            }
+            executeWithAccessibility("开启 WLAN 热点", service ->
+                    service.setHotspot(true, true, createCallback("开启 WLAN 热点")));
+        });
 
         btnHotspotOff.setOnClickListener(v -> executeWithAccessibility("关闭 WLAN 热点", service ->
                 service.setHotspot(false, true, createCallback("关闭 WLAN 热点"))));
@@ -189,6 +197,14 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
                     enabled ? "ON" : "OFF",
                     BluetoothEventReceiver.getBtStateString(state),
                     name != null ? name : "SC803"));
+        }
+
+        // Airplane mode state
+        boolean isAirplane = SettingsHelper.isAirplaneModeOn(this);
+        if (isAirplane) {
+            tvAirplaneStatus.setText("飞行模式: ON (⚠️ 热点硬件已被系统禁用)");
+        } else {
+            tvAirplaneStatus.setText("飞行模式: OFF (蜂窝网络与热点就绪)");
         }
 
         // Accessibility state

@@ -343,8 +343,12 @@ Mac 主动断开后：
 
 重复两条事件暂时不要过度解读，应用层需要做幂等/去重。
 
-**尚未验证：普通第三方 APK 是否能稳定收到 `ACTION_ACL_CONNECTED` /
-`ACTION_ACL_DISCONNECTED`。这是第一版 APK 的首要验证目标。**
+### 3.8 飞行模式 ON 时，WLAN 热点被系统底层禁用（重要实测）
+
+实机实测确认：
+- 当飞行模式处于 ON 时，系统设置中的 WLAN 热点开关处于不可用/点击无响应状态；
+- 即使手动在屏幕上点击该项，系统也不会有任何反应；
+- **核心结论**：开启 WLAN 热点前，必须先退出飞行模式并等待蜂窝网络恢复。
 
 ------------------------------------------------------------------------
 
@@ -1028,11 +1032,13 @@ APK 是否显示 ACTION_ACL_DISCONNECTED？
 [已验证] 飞行模式下可单独重新开启蓝牙
 [已验证] SC803 Bluetooth stack 能记录 Mac CONNECTED
 [已验证] SC803 Bluetooth stack 能记录 Mac DISCONNECTED
+[已验证] 普通 APK 稳定收到 ACL CONNECTED / DISCONNECTED (M1实测通过)
+[已验证] APK AccessibilityService 成功控制退出与进入飞行模式 (M2实测通过)
+[已验证] APK AccessibilityService 成功控制单独开启蓝牙 (M2实测通过)
+[已验证] 飞行模式 ON 时，WLAN 热点被系统底层禁用（点击无反应），必须先退出飞行模式
 
-[待验证] 普通 APK 能否收到 ACL CONNECTED / DISCONNECTED
+[待验证] 退出飞行模式后，AccessibilityService 控制开启/关闭 WLAN 热点
 [待验证] iPad mini 是否能形成稳定可检测的蓝牙连接
-[待验证] APK AccessibilityService 实际 ACTION_CLICK 控制飞行模式
-[待验证] APK AccessibilityService 实际 ACTION_CLICK 控制热点
 [待验证] 最终完整状态机长期运行稳定性
 ```
 

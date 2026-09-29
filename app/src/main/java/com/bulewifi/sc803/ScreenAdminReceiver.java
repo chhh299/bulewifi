@@ -8,12 +8,12 @@ public class ScreenAdminReceiver extends DeviceAdminReceiver {
     @Override
     public void onEnabled(Context context, Intent intent) {
         super.onEnabled(context, intent);
-        LogManager.getInstance().addInfoLog("自动熄屏设备管理器已激活！");
+        LogManager.getInstance().addLog("ADMIN", "DeviceAdmin", "--", "设备管理器已成功激活！");
     }
 
     @Override
     public void onDisabled(Context context, Intent intent) {
         super.onDisabled(context, intent);
-        LogManager.getInstance().addInfoLog("自动熄屏设备管理器已停用");
+        LogManager.getInstance().addLog("ADMIN", "DeviceAdmin", "--", "设备管理器已停用");
     }
 }

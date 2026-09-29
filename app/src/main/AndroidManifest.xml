@@ -51,6 +51,20 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <receiver
+            android:name=".ScreenAdminReceiver"
+            android:label="SC803 自动熄屏锁屏"
+            android:description="@string/device_admin_description"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_sample" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

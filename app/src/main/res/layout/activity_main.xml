@@ -170,6 +170,34 @@
                     android:paddingRight="10dp" />
             </LinearLayout>
 
+            <!-- Row 2: Device Admin Screen Off -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="自动熄屏 (完成后立即锁屏)"
+                    android:textColor="@color/black"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btn_admin_action"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:text="授权熄屏"
+                    android:textColor="@color/black"
+                    android:background="@drawable/btn_border"
+                    android:textSize="11sp"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp" />
+            </LinearLayout>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -177,7 +205,7 @@
                 android:layout_marginTop="2dp"
                 android:layout_marginBottom="6dp" />
 
-            <!-- Row 2: Hardware State -->
+            <!-- Row 3: Hardware State -->
             <TextView
                 android:id="@+id/tv_hw_state"
                 android:layout_width="match_parent"
@@ -186,11 +214,11 @@
                 android:textColor="@color/black"
                 android:textSize="12sp" />
 
-            <!-- Row 3: Sleep Hint -->
+            <!-- Row 4: Sleep Hint -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="💡 待机提示: 流程完成后自动切回本界面，系统按自然休眠时间灭屏或按电源键息屏"
+                android:text="💡 说明: 激活熄屏后完成流程立即黑屏锁屏；未激活时将回到桌面按系统时间熄屏"
                 android:textColor="@color/dark_gray"
                 android:textSize="10sp"
                 android:layout_marginTop="4dp" />

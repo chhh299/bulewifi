@@ -182,6 +182,7 @@ public class AutomationController {
             public void onSuccess(String action, boolean desiredState) {
                 transitionTo(State.ONLINE, "WLAN 热点已成功开启，iPad/目标设备可正常上网！");
                 SettingsHelper.goToHomeScreen(mContext);
+                mHandler.postDelayed(() -> ScreenHelper.turnScreenOff(mContext), 600);
             }
 
             @Override
@@ -287,6 +288,7 @@ public class AutomationController {
                                     mActiveConnectedTargetDevices.clear();
                                     transitionTo(State.IDLE, "待机状态已达成: 飞行模式 ON + 蓝牙 ON + 热点 OFF (极度省电)");
                                     SettingsHelper.goToHomeScreen(mContext);
+                                    mHandler.postDelayed(() -> ScreenHelper.turnScreenOff(mContext), 600);
                                 }
 
                                 @Override

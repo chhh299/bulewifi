@@ -94,8 +94,13 @@ public class SettingsHelper {
     }
 
     public static void bringAppToFront(Context context) {
-        Intent intent = new Intent(context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        context.startActivity(intent);
+        try {
+            Intent intent = new Intent(context, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            context.startActivity(intent);
+            LogManager.getInstance().addLog("UI", "App", "--", "已自动切回主界面展示");
+        } catch (Exception e) {
+            LogManager.getInstance().addErrorLog("切回主界面失败: " + e.getMessage());
+        }
     }
 }

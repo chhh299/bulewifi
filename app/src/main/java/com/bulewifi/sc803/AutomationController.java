@@ -177,10 +177,11 @@ public class AutomationController {
         }
 
         transitionTo(State.ENABLING_HOTSPOT, "移动数据已就绪，正在通过无障碍开启WLAN热点");
-        HotspotAccessibilityService.getInstance().setHotspot(true, false, new HotspotAccessibilityService.ActionListener() {
+        HotspotAccessibilityService.getInstance().setHotspot(true, true, new HotspotAccessibilityService.ActionListener() {
             @Override
             public void onSuccess(String action, boolean desiredState) {
                 transitionTo(State.ONLINE, "WLAN 热点已成功开启，iPad/目标设备可正常上网！");
+                SettingsHelper.bringAppToFront(mContext);
                 ScreenHelper.turnScreenOff(mContext, 1200);
             }
 
@@ -281,11 +282,12 @@ public class AutomationController {
                         // Step 3: Restore Bluetooth
                         transitionTo(State.RESTORING_BLUETOOTH, "飞行模式已开启，开始单独恢复开启蓝牙");
                         mHandler.postDelayed(() -> {
-                            HotspotAccessibilityService.getInstance().setBluetooth(true, false, new HotspotAccessibilityService.ActionListener() {
+                            HotspotAccessibilityService.getInstance().setBluetooth(true, true, new HotspotAccessibilityService.ActionListener() {
                                 @Override
                                 public void onSuccess(String action, boolean desiredState) {
                                     mActiveConnectedTargetDevices.clear();
                                     transitionTo(State.IDLE, "待机状态已达成: 飞行模式 ON + 蓝牙 ON + 热点 OFF (极度省电)");
+                                    SettingsHelper.bringAppToFront(mContext);
                                     ScreenHelper.turnScreenOff(mContext, 1200);
                                 }
 

@@ -93,6 +93,18 @@ public class SettingsHelper {
         context.startActivity(intent);
     }
 
+    public static void goToHomeScreen(Context context) {
+        try {
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(homeIntent);
+            LogManager.getInstance().addLog("UI", "Home", "--", "已回到手机系统主界面 (桌面)");
+        } catch (Exception e) {
+            LogManager.getInstance().addErrorLog("返回手机桌面失败: " + e.getMessage());
+        }
+    }
+
     public static void bringAppToFront(Context context) {
         try {
             Intent intent = new Intent(context, MainActivity.class);

@@ -438,7 +438,12 @@ public class HotspotAccessibilityService extends AccessibilityService {
             }
 
             if (act.returnToApp) {
-                mHandler.postDelayed(() -> SettingsHelper.bringAppToFront(this), 600);
+                mHandler.postDelayed(() -> {
+                    boolean homePressed = performGlobalAction(GLOBAL_ACTION_HOME);
+                    if (!homePressed) {
+                        SettingsHelper.goToHomeScreen(this);
+                    }
+                }, 500);
             }
         }
     }

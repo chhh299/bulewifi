@@ -1,63 +1,72 @@
-# SC803 自动热点 (BuleWifi) - Milestone 1: Bluetooth Event Probe
+# SC803 自动热点 (BuleWifi)
 
-本项目旨在为腾讯/阅文**「口袋阅2代」SC803**（展讯平台，Android 8.1.0 / API 27，免 Root）开发一款自动热点伴侣应用，作为 iPad mini / Mac 的随身 4G 热点。
+本项目旨在为腾讯/阅文**「口袋阅2代」SC803**（展讯平台，Android 8.1.0 / API 27，免 Root）开发一款自动热点伴侣应用，作为 iPad mini / Mac 的随身 4G 移动热点。
 
 ---
 
 ## 阶段规划概览
 
-- [x] **Milestone 1（当前版本）**：蓝牙 ACL 连接与断开事件探测（Bluetooth Event Probe），验证普通安装 APK 在 Android 8.1 上接收系统蓝牙广播的稳定性。
-- [ ] **Milestone 2**：无障碍服务（AccessibilityService）模拟点击系统设置，验证免 Root 切换飞行模式、蓝牙与 WLAN 热点。
+- [x] **Milestone 1（已完成并通过实测）**：蓝牙 ACL 连接与断开事件探测（Bluetooth Event Probe），验证普通安装 APK 在 Android 8.1 上接收系统蓝牙广播的稳定性。
+  - *实测记录*：MacBook Air 连接（`CONNECTED`）与断开（`DISCONNECTED`）广播 100% 成功捕获。
+- [x] **Milestone 2（当前版本）**：无障碍服务（AccessibilityService）模拟点击系统设置，验证免 Root 切换飞行模式、蓝牙与 WLAN 热点。
 - [ ] **Milestone 3**：目标设备白名单过滤（绑定指定 MAC 地址，防止无关设备触发）。
 - [ ] **Milestone 4**：串行自动化状态机串联（含 4G 蜂窝网络恢复轮询与 60 秒断开宽限期防抖）。
 - [ ] **Milestone 5**：前台保活、开机自启与异常容错优化。
 
 ---
 
-## Milestone 1 核心功能
+## Milestone 2 核心功能
 
-1. **动态注册蓝牙事件监听**：
-   - `BluetoothDevice.ACTION_ACL_CONNECTED`
-   - `BluetoothDevice.ACTION_ACL_DISCONNECTED`
-   - `BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED`
-   - `BluetoothAdapter.ACTION_STATE_CHANGED`
-2. **前台保活探测服务（BluetoothProbeService）**：
-   - 带有常驻通知栏提示，防止息屏或切到后台时被 Android 8.1 后台限制休眠。
-3. **墨水屏专属高对比度 UI**：
-   - 纯黑白界面设计，无灰阶阴影，无多余动画，适配 SC803 电子墨水屏。
-   - 实时展示本机蓝牙状态、已配对设备列表、服务运行状态。
-   - 提供「复制全部日志」、「清空日志」、「注入测试」、「刷新状态」快捷按钮。
-4. **统一 Logcat 输出**：
-   - 统一 Tag：`SC803AutoHotspot`
+1. **无障碍服务集成（HotspotAccessibilityService）**：
+   - 监听 `com.android.settings` 界面变动与内容加载；
+   - 自动查找目标 Preference 节点（「飞行模式」、「WLAN 热点」）及 `switch_widget` 开关控件；
+   - 采用幂等校验：读取 `isChecked()`，只有当当前状态与目标状态不一致时才触发 `ACTION_CLICK`；
+   - 支持超时控制与自动返回应用，确保操作完成后界面不卡在系统设置页。
+2. **手动控制测试区**：
+   - **退出飞行模式**：自动打开系统网络设置页，点击关闭飞行模式，恢复蜂窝无线电；
+   - **开启飞行模式**：自动打开系统网络设置页，点击开启飞行模式；
+   - **开启蓝牙**：在飞行模式下单独唤醒蓝牙硬件；
+   - **开启 WLAN 热点**：自动跳转热点和网络共享页面，点击开启 WLAN 热点；
+   - **关闭 WLAN 热点**：点击关闭 WLAN 热点；
+   - **系统无障碍快捷授权**：若未开启无障碍服务，高亮提示一键直达系统无障碍授权页。
+3. **墨水屏专属黑白 UI**：
+   - 针对 SC803 电子墨水屏定制高对比度无渐变黑白设计，防止残影与闪屏。
 
 ---
 
-## 实机测试验证步骤
+## 实机测试验证步骤（Milestone 2）
 
-### 1. 获取与安装 APK
-- **GitHub Actions 构建**：每次 Push 或手动触发 `workflow_dispatch` 后，在 GitHub 仓库的 **Actions** 页面下载 `SC803-AutoHotspot-debug` 产物。
-- **ADB 安装**：
-  ```bash
-  adb install -r app-debug.apk
-  ```
+### 1. 安装最新 APK
+在 GitHub 仓库的 **Actions** 页面下载最新的 `SC803-AutoHotspot-debug` 产物，执行：
+```bash
+adb install -r app-debug.apk
+```
 
-### 2. 验证流程（先使用 Mac 测试，再使用 iPad mini）
-1. **SC803 准备状态**：
-   - 开启飞行模式：`飞行模式 ON`
-   - 重新开启蓝牙：`蓝牙 ON`
-2. **启动应用**：
-   - 打开「SC803 蓝牙探测」App，确认前台服务已显示「运行中」。
-3. **建立连接**：
-   - 用 Mac 与 SC803 建立蓝牙连接。
-   - **观察**：App 界面与 Logcat 是否成功弹出 `CONNECTED` 记录，记录设备名与 MAC 地址。
-4. **主动断开**：
-   - 用 Mac 主动断开蓝牙连接。
-   - **观察**：App 界面与 Logcat 是否成功弹出 `DISCONNECTED` 记录。
-5. **回传日志**：
-   - 点击 App 内的「复制全部日志」，或通过 ADB 抓取：
-     ```bash
-     adb logcat -v time -s SC803AutoHotspot
-     ```
+### 2. 授权无障碍服务（仅首次安装需要）
+1. 打开 App，顶部会显示醒目的黑底白字按钮：**「⚠️ 点击跳转开启系统无障碍服务」**；
+2. 点击后进入系统无障碍设置，找到 **「SC803 自动热点辅助服务」** 并开启；
+3. 返回 App，确认状态显示为：**「无障碍服务: 已连接就绪 (ACTIVE)」**。
+
+### 3. 手动点击测试控制
+请依次在 App 界面测试以下功能，并观察 SC803 状态变化：
+1. **测试「退出飞行模式」**：
+   - 点击后，观察是否自动跳转系统设置关闭飞行模式，随后自动返回 App；
+   - 状态栏蜂窝信号是否开始恢复。
+2. **测试「开启 WLAN 热点」**：
+   - 点击后，观察是否自动跳转热点页面开启 WLAN 热点，随后自动返回 App；
+   - 状态栏是否出现热点图标。
+3. **测试「关闭 WLAN 热点」**：
+   - 点击后，观察是否自动关闭热点。
+4. **测试「开启飞行模式」**：
+   - 点击后，观察是否开启飞行模式。
+5. **测试「开启蓝牙」**：
+   - 在飞行模式开启的前提下点击「开启蓝牙」，验证蓝牙是否成功开启并保持飞行模式。
+
+### 4. 抓取日志
+点击界面 **「复制日志」** 或在电脑端执行：
+```bash
+adb logcat -v time -s SC803AutoHotspot
+```
 
 ---
 

@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">SC803 蓝牙探测</string>
+    <string name="app_name">SC803 自动热点</string>
+    <string name="accessibility_service_description">用于在 SC803 上辅助自动切换飞行模式与 WLAN 热点设置（免 Root）。</string>
 </resources>

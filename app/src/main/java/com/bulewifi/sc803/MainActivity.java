@@ -29,6 +29,7 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity implements AutomationController.StateChangeListener {
 
     private static final int REQ_PERMISSIONS = 2001;
+    private static final int REQ_DEVICE_ADMIN = 2002;
 
     private TextView tvHeroStatus;
     private TextView tvHeroDetail;
@@ -138,10 +139,14 @@ public class MainActivity extends AppCompatActivity implements AutomationControl
         // Device Admin Permission Action
         btnAdminAction.setOnClickListener(v -> {
             if (ScreenHelper.isDeviceAdminActive(this)) {
-                Toast.makeText(this, "自动熄屏权限已就绪！", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "正在测试关屏...", Toast.LENGTH_SHORT).show();
+                boolean ok = ScreenHelper.turnScreenOff(this, 300);
+                if (!ok) {
+                    Toast.makeText(this, "熄屏失败，系统可能不支持该接口", Toast.LENGTH_SHORT).show();
+                }
             } else {
-                Toast.makeText(this, "请点击「激活」以启用自动化完成自动熄屏", Toast.LENGTH_LONG).show();
-                ScreenHelper.openDeviceAdminSettings(this);
+                Toast.makeText(this, "请在系统设置中点击「激活」以启用自动熄屏", Toast.LENGTH_LONG).show();
+                ScreenHelper.openDeviceAdminSettings(this, REQ_DEVICE_ADMIN);
             }
         });
 
@@ -357,7 +362,7 @@ public class MainActivity extends AppCompatActivity implements AutomationControl
         // 5. Device Admin state
         boolean isAdmin = ScreenHelper.isDeviceAdminActive(this);
         if (isAdmin) {
-            btnAdminAction.setText("● 已激活");
+            btnAdminAction.setText("● 已激活 (点击测试)");
             btnAdminAction.setTextColor(Color.BLACK);
         } else {
             btnAdminAction.setText("点击激活");
@@ -395,6 +400,19 @@ public class MainActivity extends AppCompatActivity implements AutomationControl
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_PERMISSIONS) {
+            updateUiStatus();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_DEVICE_ADMIN) {
+            if (ScreenHelper.isDeviceAdminActive(this)) {
+                Toast.makeText(this, "✅ 自动熄屏权限激活成功！点击可测试关屏。", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "自动熄屏权限未激活", Toast.LENGTH_SHORT).show();
+            }
             updateUiStatus();
         }
     }

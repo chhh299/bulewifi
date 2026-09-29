@@ -368,6 +368,10 @@ public class HotspotAccessibilityService extends AccessibilityService {
             if (currentChecked == mPendingAction.desiredState) {
                 LogManager.getInstance().addLog("VERIFY", "Bluetooth", "--",
                         "VERIFIED bluetooth=" + currentChecked + " OK");
+
+                // Stop scanning for nearby devices to save battery
+                cancelBluetoothDiscovery(root);
+
                 completePendingAction(true);
             } else if (!mPendingAction.clickTriggered) {
                 LogManager.getInstance().addLog("ACTION", "Bluetooth", "--",
@@ -381,8 +385,42 @@ public class HotspotAccessibilityService extends AccessibilityService {
             // Check if adapter enabled already
             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
             if (adapter != null && adapter.isEnabled() == mPendingAction.desiredState) {
+                cancelBluetoothDiscovery(root);
                 completePendingAction(true);
             }
+        }
+    }
+
+    private void cancelBluetoothDiscovery(AccessibilityNodeInfo root) {
+        try {
+            // 1. Cancel via BluetoothAdapter API
+            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            if (adapter != null && adapter.isDiscovering()) {
+                adapter.cancelDiscovery();
+                LogManager.getInstance().addLog("ACTION", "Bluetooth", "--", "API 取消蓝牙扫描 (cancelDiscovery)");
+            }
+
+            // 2. Click "停止搜索" UI button if visible on screen
+            if (root != null) {
+                List<AccessibilityNodeInfo> stopNodes = root.findAccessibilityNodeInfosByText("停止搜索");
+                if (stopNodes == null || stopNodes.isEmpty()) {
+                    stopNodes = root.findAccessibilityNodeInfosByText("停止");
+                }
+                if (stopNodes != null && !stopNodes.isEmpty()) {
+                    for (AccessibilityNodeInfo stopNode : stopNodes) {
+                        AccessibilityNodeInfo clickTarget = findClickableParent(stopNode);
+                        if (clickTarget != null) {
+                            boolean clicked = clickTarget.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            LogManager.getInstance().addLog("ACTION", "Bluetooth", "--", "已点击'停止搜索'按钮: " + clicked);
+                            clickTarget.recycle();
+                            break;
+                        }
+                    }
+                    recycleList(stopNodes);
+                }
+            }
+        } catch (Exception e) {
+            LogManager.getInstance().addLog("ACTION", "Bluetooth", "--", "停止搜索跳过: " + e.getMessage());
         }
     }
 

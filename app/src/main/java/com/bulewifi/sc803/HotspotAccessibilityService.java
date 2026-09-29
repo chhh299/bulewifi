@@ -8,6 +8,7 @@ import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class HotspotAccessibilityService extends AccessibilityService {
@@ -30,6 +31,7 @@ public class HotspotAccessibilityService extends AccessibilityService {
         final boolean returnToApp;
         final ActionListener listener;
         boolean clickTriggered = false;
+        boolean dumped = false;
 
         PendingAction(String actionType, boolean desiredState, long timeoutMs, boolean returnToApp, ActionListener listener) {
             this.actionType = actionType;
@@ -132,7 +134,7 @@ public class HotspotAccessibilityService extends AccessibilityService {
             if (mPendingAction != null) {
                 processPendingAction();
                 if (mPendingAction != null && !mPendingAction.isTimedOut()) {
-                    schedulePeriodicCheck(350);
+                    schedulePeriodicCheck(250);
                 }
             }
         }, delayMs);
@@ -233,69 +235,93 @@ public class HotspotAccessibilityService extends AccessibilityService {
     }
 
     private void handleHotspotStep(AccessibilityNodeInfo root) {
-        // If on "网络和互联网" page and there is "热点和网络共享", click it to enter TetherSettings
-        AccessibilityNodeInfo tetherEntry = findNodeByText(root, "热点和网络共享");
-        if (tetherEntry != null) {
-            AccessibilityNodeInfo clickTarget = findClickableParent(tetherEntry);
-            if (clickTarget != null) {
-                LogManager.getInstance().addLog("ACTION", "Hotspot", "--", "点击'热点和网络共享'进入子菜单");
-                clickTarget.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                clickTarget.recycle();
+        // 1. Search for any nodes with text containing "热点", "Hotspot", or "Tether"
+        List<AccessibilityNodeInfo> hotspotNodes = root.findAccessibilityNodeInfosByText("热点");
+        if (hotspotNodes == null || hotspotNodes.isEmpty()) {
+            hotspotNodes = root.findAccessibilityNodeInfosByText("Hotspot");
+        }
+        if (hotspotNodes == null || hotspotNodes.isEmpty()) {
+            hotspotNodes = root.findAccessibilityNodeInfosByText("Tether");
+        }
+        if (hotspotNodes == null || hotspotNodes.isEmpty()) {
+            hotspotNodes = root.findAccessibilityNodeInfosByText("网络共享");
+        }
+
+        if (hotspotNodes != null && !hotspotNodes.isEmpty()) {
+            // First pass: Check if any of these nodes has an actual Switch in its Preference row
+            for (AccessibilityNodeInfo node : hotspotNodes) {
+                AccessibilityNodeInfo preferenceItem = findPreferenceItem(node);
+                if (preferenceItem != null) {
+                    AccessibilityNodeInfo switchWidget = findNodeById(preferenceItem, "android:id/switch_widget");
+                    if (switchWidget == null) {
+                        switchWidget = findNodeByClass(preferenceItem, "android.widget.Switch");
+                    }
+
+                    if (switchWidget != null) {
+                        // Found the actual Hotspot Switch!
+                        boolean currentChecked = switchWidget.isChecked();
+                        CharSequence titleText = node.getText();
+                        String title = titleText != null ? titleText.toString() : "WLAN 热点";
+
+                        if (currentChecked == mPendingAction.desiredState) {
+                            LogManager.getInstance().addLog("VERIFY", "Hotspot", "--",
+                                    "VERIFIED " + title + " checked=" + currentChecked + " OK (Desired: " + mPendingAction.desiredState + ")");
+                            switchWidget.recycle();
+                            preferenceItem.recycle();
+                            recycleList(hotspotNodes);
+                            completePendingAction(true);
+                            return;
+                        } else if (!mPendingAction.clickTriggered) {
+                            LogManager.getInstance().addLog("ACTION", "Hotspot", "--",
+                                    title + " CURRENT checked=" + currentChecked + " -> CLICKING (Target=" + mPendingAction.desiredState + ")");
+
+                            boolean clicked = preferenceItem.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            if (!clicked) {
+                                clicked = switchWidget.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            }
+                            LogManager.getInstance().addLog("ACTION", "Hotspot", "--", "Click result=" + clicked);
+                            mPendingAction.clickTriggered = true;
+                            switchWidget.recycle();
+                            preferenceItem.recycle();
+                            recycleList(hotspotNodes);
+                            return;
+                        }
+                        switchWidget.recycle();
+                    }
+                    preferenceItem.recycle();
+                }
             }
-            tetherEntry.recycle();
-            return;
-        }
 
-        // Find text "WLAN 热点"
-        AccessibilityNodeInfo titleNode = findNodeByText(root, "WLAN 热点");
-        if (titleNode == null) {
-            titleNode = findNodeByText(root, "WLAN热点");
-        }
-        if (titleNode == null) {
-            titleNode = findNodeByText(root, "便携式 WLAN 热点");
-        }
-        if (titleNode == null) {
-            return; // Not on TetherSettings page yet
-        }
-
-        AccessibilityNodeInfo preferenceItem = findPreferenceItem(titleNode);
-        if (preferenceItem == null) {
-            titleNode.recycle();
-            return;
-        }
-
-        AccessibilityNodeInfo switchWidget = findNodeById(preferenceItem, "android:id/switch_widget");
-        if (switchWidget == null) {
-            switchWidget = findNodeByClass(preferenceItem, "android.widget.Switch");
-        }
-
-        if (switchWidget == null) {
-            preferenceItem.recycle();
-            titleNode.recycle();
-            return;
-        }
-
-        boolean currentChecked = switchWidget.isChecked();
-
-        if (currentChecked == mPendingAction.desiredState) {
-            LogManager.getInstance().addLog("VERIFY", "Hotspot", "--",
-                    "VERIFIED hotspot=" + currentChecked + " OK (Desired: " + mPendingAction.desiredState + ")");
-            completePendingAction(true);
-        } else if (!mPendingAction.clickTriggered) {
-            LogManager.getInstance().addLog("ACTION", "Hotspot", "--",
-                    "CURRENT checked=" + currentChecked + " -> CLICKING (Target=" + mPendingAction.desiredState + ")");
-
-            boolean clicked = preferenceItem.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-            if (!clicked) {
-                clicked = switchWidget.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            // Second pass: If no switch found, check if it's a submenu entry to enter TetherSettings
+            if (!mPendingAction.clickTriggered) {
+                for (AccessibilityNodeInfo node : hotspotNodes) {
+                    CharSequence text = node.getText();
+                    String str = text != null ? text.toString() : "";
+                    if (str.contains("网络共享") || str.contains("共享") || str.contains("热点") || str.contains("Tether")) {
+                        AccessibilityNodeInfo clickTarget = findClickableParent(node);
+                        if (clickTarget != null) {
+                            LogManager.getInstance().addLog("ACTION", "Hotspot", "--",
+                                    "点击菜单项进入热点子页面: '" + str + "'");
+                            boolean clicked = clickTarget.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            LogManager.getInstance().addLog("ACTION", "Hotspot", "--", "点击菜单结果=" + clicked);
+                            clickTarget.recycle();
+                            recycleList(hotspotNodes);
+                            return;
+                        }
+                    }
+                }
             }
-            LogManager.getInstance().addLog("ACTION", "Hotspot", "--", "Click result=" + clicked);
-            mPendingAction.clickTriggered = true;
+            recycleList(hotspotNodes);
         }
 
-        switchWidget.recycle();
-        preferenceItem.recycle();
-        titleNode.recycle();
+        // Diagnostic: If after 1.5 seconds we still haven't found or clicked, dump all texts on screen
+        if ((SystemClock.uptimeMillis() - mPendingAction.startTime > 1500) && !mPendingAction.dumped) {
+            mPendingAction.dumped = true;
+            List<String> visibleTexts = new ArrayList<>();
+            collectVisibleTexts(root, visibleTexts);
+            LogManager.getInstance().addLog("UI_DUMP", "ScreenTexts", "--",
+                    "当前页面文本列表: " + visibleTexts.toString());
+        }
     }
 
     private void handleBluetoothStep(AccessibilityNodeInfo root) {
@@ -343,6 +369,33 @@ public class HotspotAccessibilityService extends AccessibilityService {
 
             if (act.returnToApp) {
                 mHandler.postDelayed(() -> SettingsHelper.bringAppToFront(this), 600);
+            }
+        }
+    }
+
+    private void collectVisibleTexts(AccessibilityNodeInfo node, List<String> list) {
+        if (node == null || list.size() > 30) return;
+        CharSequence text = node.getText();
+        if (text != null && text.length() > 0) {
+            list.add(text.toString());
+        }
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null) {
+                collectVisibleTexts(child, list);
+                child.recycle();
+            }
+        }
+    }
+
+    private void recycleList(List<AccessibilityNodeInfo> list) {
+        if (list != null) {
+            for (AccessibilityNodeInfo n : list) {
+                if (n != null) {
+                    try {
+                        n.recycle();
+                    } catch (Exception ignored) {}
+                }
             }
         }
     }

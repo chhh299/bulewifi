@@ -1,14 +1,10 @@
 package com.bulewifi.sc803;
 
-import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.provider.Settings;
 import android.text.TextUtils;
-import android.view.accessibility.AccessibilityManager;
-
-import java.util.List;
 
 public class SettingsHelper {
 
@@ -49,31 +45,41 @@ public class SettingsHelper {
     }
 
     public static void openTetherSettings(Context context) {
-        // Standard AOSP TetherSettings action
-        Intent intent = new Intent("android.settings.TETHER_SETTINGS");
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if (context.getPackageManager().resolveActivity(intent, 0) != null) {
+        LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Attempting to open Tether Settings...");
+
+        // 1. Try standard Android 8.1 AOSP Settings$TetherSettingsActivity
+        try {
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName("com.android.settings", "com.android.settings.Settings$TetherSettingsActivity"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
+            LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Launched Settings$TetherSettingsActivity");
             return;
-        }
-
-        // Direct component fallback for Android 8.1 / SC803
-        try {
-            Intent componentIntent = new Intent();
-            componentIntent.setClassName("com.android.settings", "com.android.settings.TetherSettings");
-            componentIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(componentIntent);
-            return;
-        } catch (Exception ignored) {
-        }
-
-        // Second fallback: Wireless & Network settings
-        try {
-            Intent wirelessIntent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
-            wirelessIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(wirelessIntent);
         } catch (Exception e) {
-            LogManager.getInstance().addErrorLog("无法打开热点设置页面: " + e.getMessage());
+            LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Settings$TetherSettingsActivity failed: " + e.getMessage());
+        }
+
+        // 2. Try action "android.settings.TETHER_SETTINGS"
+        try {
+            Intent actionIntent = new Intent("android.settings.TETHER_SETTINGS");
+            actionIntent.addCategory(Intent.CATEGORY_DEFAULT);
+            actionIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(actionIntent);
+            LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Launched android.settings.TETHER_SETTINGS");
+            return;
+        } catch (Exception e) {
+            LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "TETHER_SETTINGS action failed: " + e.getMessage());
+        }
+
+        // 3. Fallback: Open "网络和互联网" (Settings.ACTION_AIRPLANE_MODE_SETTINGS)
+        // This is 100% verified to work on SC803 and opens the Network & Internet dashboard
+        try {
+            Intent netIntent = new Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS);
+            netIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(netIntent);
+            LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Launched AIRPLANE_MODE_SETTINGS as dashboard fallback");
+        } catch (Exception e) {
+            LogManager.getInstance().addErrorLog("打开网络和互联网页面失败: " + e.getMessage());
         }
     }
 

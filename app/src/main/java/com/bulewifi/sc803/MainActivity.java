@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements
     private TextView tvLogSummary;
 
     private Button btnOpenAccessibility;
+    private Button btnDeviceAdmin;
     private Button btnToggleAuto;
     private Button btnSelectDevice;
 
@@ -66,6 +67,18 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        } else {
+            getWindow().addFlags(
+                    android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                    android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                    android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            );
+        }
+
         setContentView(R.layout.activity_main);
 
         initViews();
@@ -99,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements
         tvLogSummary = findViewById(R.id.tv_log_summary);
 
         btnOpenAccessibility = findViewById(R.id.btn_open_accessibility);
+        btnDeviceAdmin = findViewById(R.id.btn_device_admin);
         btnToggleAuto = findViewById(R.id.btn_toggle_auto);
         btnSelectDevice = findViewById(R.id.btn_select_device);
 
@@ -130,6 +144,15 @@ public class MainActivity extends AppCompatActivity implements
         btnOpenAccessibility.setOnClickListener(v -> {
             Toast.makeText(this, "请在列表中找到并开启「SC803 自动热点辅助服务」", Toast.LENGTH_LONG).show();
             SettingsHelper.openAccessibilitySettings(this);
+        });
+
+        btnDeviceAdmin.setOnClickListener(v -> {
+            if (ScreenHelper.isDeviceAdminActive(this)) {
+                Toast.makeText(this, "自动熄屏权限已处于激活状态", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "请在弹出页面中点击「激活」以启用自动熄屏", Toast.LENGTH_LONG).show();
+                ScreenHelper.openDeviceAdminSettings(this);
+            }
         });
 
         btnToggleAuto.setOnClickListener(v -> {
@@ -360,6 +383,14 @@ public class MainActivity extends AppCompatActivity implements
             tvAccessibilityStatus.setText("无障碍服务: 未开启 (免Root必需)");
             btnOpenAccessibility.setVisibility(View.VISIBLE);
             btnOpenAccessibility.setText("⚠️ 点击跳转开启系统无障碍服务");
+        }
+
+        // Device Admin state for auto screen off
+        boolean isAdmin = ScreenHelper.isDeviceAdminActive(this);
+        if (isAdmin) {
+            btnDeviceAdmin.setText("自动熄屏: 已激活 (流程完成自动关屏)");
+        } else {
+            btnDeviceAdmin.setText("🔒 开启自动熄屏权限 (热点开启后自动息屏)");
         }
 
         tvLogSummary.setText(String.format("事件日志 (共 %d 条):", mLogAdapter.getItemCount()));

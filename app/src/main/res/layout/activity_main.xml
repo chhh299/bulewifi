@@ -96,6 +96,17 @@
         android:textStyle="bold"
         android:layout_marginBottom="4dp" />
 
+    <!-- Device Admin Button for Auto Screen Off -->
+    <Button
+        android:id="@+id/btn_device_admin"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:text="🔒 开启自动熄屏权限 (热点开启后自动息屏)"
+        android:textColor="@color/black"
+        android:background="@drawable/btn_border"
+        android:textSize="11sp"
+        android:layout_marginBottom="4dp" />
+
     <!-- Automation Controls Row: Toggle Auto Mode & Select Target Device -->
     <LinearLayout
         android:layout_width="match_parent"

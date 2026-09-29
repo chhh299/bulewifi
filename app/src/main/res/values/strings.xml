@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">SC803 自动热点</string>
     <string name="accessibility_service_description">用于在 SC803 上辅助自动切换飞行模式与 WLAN 热点设置（免 Root）。</string>
+    <string name="device_admin_description">允许在热点开启和待机完成后自动熄灭屏幕，节省墨水屏电量。</string>
 </resources>

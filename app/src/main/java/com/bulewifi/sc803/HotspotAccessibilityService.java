@@ -82,6 +82,7 @@ public class HotspotAccessibilityService extends AccessibilityService {
     }
 
     public synchronized void setAirplaneMode(boolean enable, boolean returnToApp, ActionListener listener) {
+        ScreenHelper.wakeUpScreen(this);
         LogManager.getInstance().addLog("REQUEST", "AirplaneMode", "--",
                 "Request desired=" + enable + ", returnToApp=" + returnToApp);
 
@@ -92,6 +93,7 @@ public class HotspotAccessibilityService extends AccessibilityService {
     }
 
     public synchronized void setHotspot(boolean enable, boolean returnToApp, ActionListener listener) {
+        ScreenHelper.wakeUpScreen(this);
         LogManager.getInstance().addLog("REQUEST", "WLAN_Hotspot", "--",
                 "Request desired=" + enable + ", returnToApp=" + returnToApp);
 
@@ -120,6 +122,7 @@ public class HotspotAccessibilityService extends AccessibilityService {
     }
 
     public synchronized void setBluetooth(boolean enable, boolean returnToApp, ActionListener listener) {
+        ScreenHelper.wakeUpScreen(this);
         LogManager.getInstance().addLog("REQUEST", "Bluetooth", "--",
                 "Request desired=" + enable);
 

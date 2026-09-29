@@ -138,6 +138,9 @@ public class AutomationController {
             return;
         }
 
+        // Wake up screen if asleep so UI can render
+        ScreenHelper.wakeUpScreen(mContext);
+
         // Start connection pipeline:
         // 1. Exit Airplane Mode
         transitionTo(State.EXITING_AIRPLANE, "收到蓝牙连接，开始退出飞行模式");
@@ -178,6 +181,7 @@ public class AutomationController {
             @Override
             public void onSuccess(String action, boolean desiredState) {
                 transitionTo(State.ONLINE, "WLAN 热点已成功开启，iPad/目标设备可正常上网！");
+                ScreenHelper.turnScreenOff(mContext, 1200);
             }
 
             @Override
@@ -261,6 +265,9 @@ public class AutomationController {
             return;
         }
 
+        // Wake screen so Settings UI can render
+        ScreenHelper.wakeUpScreen(mContext);
+
         // Step 1: Disable WLAN Hotspot
         transitionTo(State.DISABLING_HOTSPOT, "宽限期超时，开始关闭WLAN热点");
         HotspotAccessibilityService.getInstance().setHotspot(false, false, new HotspotAccessibilityService.ActionListener() {
@@ -279,6 +286,7 @@ public class AutomationController {
                                 public void onSuccess(String action, boolean desiredState) {
                                     mActiveConnectedTargetDevices.clear();
                                     transitionTo(State.IDLE, "待机状态已达成: 飞行模式 ON + 蓝牙 ON + 热点 OFF (极度省电)");
+                                    ScreenHelper.turnScreenOff(mContext, 1200);
                                 }
 
                                 @Override

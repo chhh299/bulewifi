@@ -1,0 +1,10 @@
+<resources>
+    <!-- Base application theme with high contrast for E-ink display -->
+    <style name="Theme.SC803Probe" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/black</item>
+        <item name="colorPrimaryDark">@color/black</item>
+        <item name="colorAccent">@color/black</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+</resources>

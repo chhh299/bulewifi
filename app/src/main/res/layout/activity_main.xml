@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:padding="8dp">
+
+    <!-- Title Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SC803 蓝牙探测 (M1: Probe)"
+        android:textColor="@color/black"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Android 8.1 API 27 | 验证 ACL 广播接收"
+        android:textColor="@color/dark_gray"
+        android:textSize="12sp"
+        android:layout_marginBottom="6dp" />
+
+    <!-- Status Box -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/card_border"
+        android:padding="8dp"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/tv_bt_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="蓝牙: 正在检测..."
+            android:textColor="@color/black"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_color"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_service_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="前台探测服务: 初始化中..."
+            android:textColor="@color/black"
+            android:textSize="13sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_color"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_bonded_devices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="已配对设备: (读取中...)"
+            android:textColor="@color/dark_gray"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Control Buttons Row 1 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="6dp">
+
+        <Button
+            android:id="@+id/btn_toggle_service"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="启动服务"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/btn_border"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_refresh"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="刷新状态"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:background="@drawable/btn_border"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp" />
+
+        <Button
+            android:id="@+id/btn_test_event"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="注入测试"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:background="@drawable/btn_border"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <!-- Control Buttons Row 2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/btn_copy_logs"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="复制全部日志"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:background="@drawable/btn_border"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_clear_logs"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="清空日志"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:background="@drawable/btn_border"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <!-- Log Section Title -->
+    <TextView
+        android:id="@+id/tv_log_summary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="事件日志 (共 0 条):"
+        android:textColor="@color/black"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <!-- RecyclerView Log List Container with Border -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/card_border"
+        android:padding="2dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_logs"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="vertical" />
+    </FrameLayout>
+
+</LinearLayout>

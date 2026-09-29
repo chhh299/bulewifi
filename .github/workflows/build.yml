@@ -26,8 +26,8 @@ jobs:
       - name: Build Debug APK
         run: |
           ./gradlew assembleDebug --stacktrace --no-daemon > build.log 2>&1 || {
-            ERR=$(tail -n 35 build.log | tr '\n' ' | ')
-            echo "::error title=GradleBuildFailure::$ERR"
+            ERR=$(grep -A 10 -B 2 "Duplicate class" build.log | tr '\n' ' | ')
+            echo "::error title=DuplicateClassError::$ERR"
             exit 1
           }
 

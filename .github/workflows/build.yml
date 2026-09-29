@@ -25,7 +25,11 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          ./gradlew assembleDebug --stacktrace --no-daemon > build.log 2>&1 || (echo "=== GRADLE FAILURE ==="; tail -n 100 build.log; exit 1)
+          ./gradlew assembleDebug --stacktrace --no-daemon > build.log 2>&1 || {
+            ERR=$(tail -n 35 build.log | tr '\n' ' | ')
+            echo "::error title=GradleBuildFailure::$ERR"
+            exit 1
+          }
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
@@ -33,10 +37,3 @@ jobs:
           name: SC803-AutoHotspot-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
-      - name: Upload Failure Log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-failure-log
-          path: build.log

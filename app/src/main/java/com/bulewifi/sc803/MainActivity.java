@@ -2,6 +2,7 @@ package com.bulewifi.sc803;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -14,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -23,17 +25,27 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bulewifi.sc803.model.LogItem;
 
-public class MainActivity extends AppCompatActivity implements LogManager.OnLogUpdateListener {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+public class MainActivity extends AppCompatActivity implements
+        LogManager.OnLogUpdateListener,
+        AutomationController.StateChangeListener {
 
     private static final int REQ_PERMISSIONS = 2001;
 
+    private TextView tvAutomationState;
+    private TextView tvTargetDevice;
     private TextView tvBtStatus;
     private TextView tvAirplaneStatus;
     private TextView tvAccessibilityStatus;
-    private TextView tvServiceStatus;
     private TextView tvLogSummary;
 
     private Button btnOpenAccessibility;
+    private Button btnToggleAuto;
+    private Button btnSelectDevice;
+
     private Button btnAirplaneOff;
     private Button btnAirplaneOn;
     private Button btnBluetoothOn;
@@ -61,8 +73,9 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        // Register log listener
+        // Register listeners
         LogManager.getInstance().registerListener(this);
+        AutomationController.getInstance(this).registerListener(this);
 
         // Load existing logs
         mLogAdapter.setItems(LogManager.getInstance().getLogsSnapshot());
@@ -76,13 +89,17 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
     }
 
     private void initViews() {
+        tvAutomationState = findViewById(R.id.tv_automation_state);
+        tvTargetDevice = findViewById(R.id.tv_target_device);
         tvBtStatus = findViewById(R.id.tv_bt_status);
         tvAirplaneStatus = findViewById(R.id.tv_airplane_status);
         tvAccessibilityStatus = findViewById(R.id.tv_accessibility_status);
-        tvServiceStatus = findViewById(R.id.tv_service_status);
         tvLogSummary = findViewById(R.id.tv_log_summary);
 
         btnOpenAccessibility = findViewById(R.id.btn_open_accessibility);
+        btnToggleAuto = findViewById(R.id.btn_toggle_auto);
+        btnSelectDevice = findViewById(R.id.btn_select_device);
+
         btnAirplaneOff = findViewById(R.id.btn_airplane_off);
         btnAirplaneOn = findViewById(R.id.btn_airplane_on);
         btnBluetoothOn = findViewById(R.id.btn_bluetooth_on);
@@ -112,6 +129,21 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
             Toast.makeText(this, "请在列表中找到并开启「SC803 自动热点辅助服务」", Toast.LENGTH_LONG).show();
             SettingsHelper.openAccessibilitySettings(this);
         });
+
+        btnToggleAuto.setOnClickListener(v -> {
+            DevicePreferences prefs = DevicePreferences.getInstance(this);
+            boolean newEnabled = !prefs.isAutoModeEnabled();
+            if (newEnabled && !HotspotAccessibilityService.isServiceConnected()) {
+                Toast.makeText(this, "⚠️ 请先开启无障碍服务才能启用自动控制！", Toast.LENGTH_LONG).show();
+                SettingsHelper.openAccessibilitySettings(this);
+                return;
+            }
+            prefs.setAutoModeEnabled(newEnabled);
+            Toast.makeText(this, newEnabled ? "✅ 自动热点控制已开启" : "⏸ 自动热点控制已停止", Toast.LENGTH_SHORT).show();
+            updateUiStatus();
+        });
+
+        btnSelectDevice.setOnClickListener(v -> showDeviceSelectDialog());
 
         btnAirplaneOff.setOnClickListener(v -> executeWithAccessibility("退出飞行模式", service ->
                 service.setAirplaneMode(false, true, createCallback("退出飞行模式"))));
@@ -145,6 +177,46 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
             updateUiStatus();
             Toast.makeText(this, "状态已刷新", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void showDeviceSelectDialog() {
+        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+            Toast.makeText(this, "请先开启蓝牙后选择设备", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Set<BluetoothDevice> bonded = mBluetoothAdapter.getBondedDevices();
+        List<String> items = new ArrayList<>();
+        List<String> macs = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+
+        // Option 0: Any device
+        items.add("⚡ 监听任意蓝牙设备 (调试模式)");
+        macs.add("ALL");
+        names.add("任意设备");
+
+        if (bonded != null) {
+            for (BluetoothDevice dev : bonded) {
+                String devName = dev.getName() != null ? dev.getName() : "(Unknown)";
+                String devMac = dev.getAddress();
+                items.add("📱 " + devName + "\n   " + devMac);
+                macs.add(devMac);
+                names.add(devName);
+            }
+        }
+
+        String[] itemArray = items.toArray(new String[0]);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择触发热点的目标设备");
+        builder.setItems(itemArray, (dialog, which) -> {
+            String selectedMac = macs.get(which);
+            String selectedName = names.get(which);
+            DevicePreferences.getInstance(this).setTargetDevice(selectedMac, selectedName);
+            Toast.makeText(this, "已锁定目标: " + selectedName, Toast.LENGTH_SHORT).show();
+            updateUiStatus();
+        });
+        builder.setNegativeButton("取消", null);
+        builder.show();
     }
 
     private interface ServiceAction {
@@ -185,34 +257,52 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
     }
 
     private void updateUiStatus() {
+        DevicePreferences prefs = DevicePreferences.getInstance(this);
+        AutomationController controller = AutomationController.getInstance(this);
+
+        // Automation state
+        AutomationController.State state = controller.getCurrentState();
+        int remainingGrace = controller.getRemainingGraceSeconds();
+        if (state == AutomationController.State.DISCONNECT_GRACE && remainingGrace > 0) {
+            tvAutomationState.setText("自动化状态: 宽限断开中 (剩余 " + remainingGrace + " 秒)");
+        } else {
+            tvAutomationState.setText("自动化状态: " + state.getDescription());
+        }
+
+        // Target device
+        String targetName = prefs.getTargetName();
+        String targetMac = prefs.getTargetMac();
+        if (targetMac.isEmpty() || "ALL".equalsIgnoreCase(targetMac)) {
+            tvTargetDevice.setText("目标设备: 任意连接均触发热点 (点击可指定)");
+        } else {
+            tvTargetDevice.setText("目标设备: " + targetName + " [" + targetMac + "]");
+        }
+
+        // Auto mode toggle button
+        boolean autoEnabled = prefs.isAutoModeEnabled();
+        btnToggleAuto.setText(autoEnabled ? "自动控制: 已开启 (RUNNING)" : "自动控制: 已停止 (点击启动)");
+
         // Bluetooth adapter state
         if (mBluetoothAdapter == null) {
-            tvBtStatus.setText("蓝牙硬件: 不可用 (null)");
+            tvBtStatus.setText("蓝牙: 不可用");
         } else {
             boolean enabled = mBluetoothAdapter.isEnabled();
-            int state = mBluetoothAdapter.getState();
-            String name = mBluetoothAdapter.getName();
-            String address = mBluetoothAdapter.getAddress();
-            tvBtStatus.setText(String.format("蓝牙: %s (%s) | 本机: %s",
+            int btState = mBluetoothAdapter.getState();
+            tvBtStatus.setText(String.format("蓝牙: %s (%s)",
                     enabled ? "ON" : "OFF",
-                    BluetoothEventReceiver.getBtStateString(state),
-                    name != null ? name : "SC803"));
+                    BluetoothEventReceiver.getBtStateString(btState)));
         }
 
         // Airplane mode state
         boolean isAirplane = SettingsHelper.isAirplaneModeOn(this);
-        if (isAirplane) {
-            tvAirplaneStatus.setText("飞行模式: ON (⚠️ 热点硬件已被系统禁用)");
-        } else {
-            tvAirplaneStatus.setText("飞行模式: OFF (蜂窝网络与热点就绪)");
-        }
+        tvAirplaneStatus.setText(isAirplane ? "飞行: ON (热点禁用)" : "飞行: OFF (正常)");
 
         // Accessibility state
         boolean isConnected = HotspotAccessibilityService.isServiceConnected();
         boolean isSysEnabled = SettingsHelper.isAccessibilityServiceEnabled(this, HotspotAccessibilityService.class);
 
         if (isConnected) {
-            tvAccessibilityStatus.setText("无障碍服务: 已连接就绪 (ACTIVE)");
+            tvAccessibilityStatus.setText("无障碍服务: 已就绪 (ACTIVE)");
             btnOpenAccessibility.setVisibility(View.GONE);
         } else if (isSysEnabled) {
             tvAccessibilityStatus.setText("无障碍服务: 系统已开 (等待绑定连接)");
@@ -223,10 +313,6 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
             btnOpenAccessibility.setVisibility(View.VISIBLE);
             btnOpenAccessibility.setText("⚠️ 点击跳转开启系统无障碍服务");
         }
-
-        // Probe Service state
-        boolean isRunning = BluetoothProbeService.isRunning();
-        tvServiceStatus.setText(String.format("前台保活服务: %s", isRunning ? "运行中 (ACTIVE)" : "已停止"));
 
         tvLogSummary.setText(String.format("事件日志 (共 %d 条):", mLogAdapter.getItemCount()));
     }
@@ -283,6 +369,16 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
     }
 
     @Override
+    public void onStateChanged(AutomationController.State newState, String detail) {
+        runOnUiThread(this::updateUiStatus);
+    }
+
+    @Override
+    public void onGraceCountdown(int remainingSeconds) {
+        runOnUiThread(this::updateUiStatus);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         updateUiStatus();
@@ -292,5 +388,6 @@ public class MainActivity extends AppCompatActivity implements LogManager.OnLogU
     protected void onDestroy() {
         super.onDestroy();
         LogManager.getInstance().unregisterListener(this);
+        AutomationController.getInstance(this).unregisterListener(this);
     }
 }

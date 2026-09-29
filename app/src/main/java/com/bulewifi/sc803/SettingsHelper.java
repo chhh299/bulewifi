@@ -44,7 +44,7 @@ public class SettingsHelper {
 
     public static void openAirplaneModeSettings(Context context) {
         Intent intent = new Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         context.startActivity(intent);
     }
 
@@ -55,7 +55,7 @@ public class SettingsHelper {
         try {
             Intent intent = new Intent();
             intent.setComponent(new ComponentName("com.android.settings", "com.android.settings.Settings$TetherSettingsActivity"));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             context.startActivity(intent);
             LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Launched Settings$TetherSettingsActivity");
             return;
@@ -67,7 +67,7 @@ public class SettingsHelper {
         try {
             Intent actionIntent = new Intent("android.settings.TETHER_SETTINGS");
             actionIntent.addCategory(Intent.CATEGORY_DEFAULT);
-            actionIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            actionIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             context.startActivity(actionIntent);
             LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Launched android.settings.TETHER_SETTINGS");
             return;
@@ -79,7 +79,7 @@ public class SettingsHelper {
         // This is 100% verified to work on SC803 and opens the Network & Internet dashboard
         try {
             Intent netIntent = new Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS);
-            netIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            netIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             context.startActivity(netIntent);
             LogManager.getInstance().addLog("LAUNCH", "TetherSettings", "--", "Launched AIRPLANE_MODE_SETTINGS as dashboard fallback");
         } catch (Exception e) {

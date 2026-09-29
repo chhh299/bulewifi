@@ -16,12 +16,13 @@ import android.os.IBinder;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-public class BluetoothProbeService extends Service {
+public class BluetoothProbeService extends Service implements AutomationController.StateChangeListener {
     private static final String CHANNEL_ID = "sc803_bt_probe_channel";
     private static final int NOTIFICATION_ID = 1001;
 
     private static volatile boolean sIsRunning = false;
     private BluetoothEventReceiver mReceiver;
+    private NotificationManager mNotificationManager;
 
     public static boolean isRunning() {
         return sIsRunning;
@@ -45,12 +46,14 @@ public class BluetoothProbeService extends Service {
     public void onCreate() {
         super.onCreate();
         sIsRunning = true;
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         LogManager.getInstance().addInfoLog("BluetoothProbeService onCreate");
 
         createNotificationChannel();
-        startForeground(NOTIFICATION_ID, buildNotification());
+        startForeground(NOTIFICATION_ID, buildNotification("正在监听目标设备蓝牙连接..."));
 
         registerBluetoothReceiver();
+        AutomationController.getInstance(this).registerListener(this);
     }
 
     @Override
@@ -88,18 +91,17 @@ public class BluetoothProbeService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "SC803 蓝牙探测服务",
+                    "SC803 自动热点服务",
                     NotificationManager.IMPORTANCE_LOW
             );
             channel.setDescription("保持前台常驻以监听蓝牙连接与断开广播");
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
+            if (mNotificationManager != null) {
+                mNotificationManager.createNotificationChannel(channel);
             }
         }
     }
 
-    private Notification buildNotification() {
+    private Notification buildNotification(String contentText) {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -110,8 +112,8 @@ public class BluetoothProbeService extends Service {
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("SC803 蓝牙探测服务运行中")
-                .setContentText("正在监听目标蓝牙 ACL CONNECTED / DISCONNECTED")
+                .setContentTitle("SC803 自动热点")
+                .setContentText(contentText)
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
@@ -119,8 +121,23 @@ public class BluetoothProbeService extends Service {
     }
 
     @Override
+    public void onStateChanged(AutomationController.State newState, String detail) {
+        if (mNotificationManager != null) {
+            mNotificationManager.notify(NOTIFICATION_ID, buildNotification("状态: " + newState.getDescription()));
+        }
+    }
+
+    @Override
+    public void onGraceCountdown(int remainingSeconds) {
+        if (mNotificationManager != null) {
+            mNotificationManager.notify(NOTIFICATION_ID, buildNotification("目标断开，热点倒计时: " + remainingSeconds + "秒"));
+        }
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
+        AutomationController.getInstance(this).unregisterListener(this);
         unregisterBluetoothReceiver();
         sIsRunning = false;
         LogManager.getInstance().addInfoLog("BluetoothProbeService 已停止");

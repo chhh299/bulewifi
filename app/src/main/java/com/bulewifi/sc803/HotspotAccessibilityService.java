@@ -212,7 +212,17 @@ public class HotspotAccessibilityService extends AccessibilityService {
             titleNode = findNodeByText(root, "Airplane mode");
         }
         if (titleNode == null) {
-            return; // Not on airplane mode page yet
+            // If we are currently stuck in TetherSettings subpage, press system BACK to pop back to NetworkDashboard
+            List<AccessibilityNodeInfo> subpageIndicators = root.findAccessibilityNodeInfosByText("USB网络共享");
+            if (subpageIndicators == null || subpageIndicators.isEmpty()) {
+                subpageIndicators = root.findAccessibilityNodeInfosByText("WLAN热点设置");
+            }
+            if (subpageIndicators != null && !subpageIndicators.isEmpty()) {
+                recycleList(subpageIndicators);
+                LogManager.getInstance().addLog("ACTION", "AirplaneMode", "--", "当前停留在热点子页面，执行系统 BACK 返回网络主菜单");
+                performGlobalAction(GLOBAL_ACTION_BACK);
+            }
+            return; // Wait for next tick
         }
 
         AccessibilityNodeInfo preferenceItem = findPreferenceRow(titleNode);

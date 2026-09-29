@@ -20,11 +20,11 @@ public class BluetoothEventReceiver extends BroadcastReceiver {
         LogManager logManager = LogManager.getInstance();
 
         if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)) {
-            handleAclEvent(intent, "CONNECTED");
+            handleAclEvent(context, intent, "CONNECTED");
         } else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
-            handleAclEvent(intent, "DISCONNECTED");
+            handleAclEvent(context, intent, "DISCONNECTED");
         } else if (BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED.equals(action)) {
-            handleAclEvent(intent, "DISCONNECT_REQ");
+            handleAclEvent(context, intent, "DISCONNECT_REQ");
         } else if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
             handleStateChanged(intent);
         } else {
@@ -33,7 +33,7 @@ public class BluetoothEventReceiver extends BroadcastReceiver {
         }
     }
 
-    private void handleAclEvent(Intent intent, String eventType) {
+    private void handleAclEvent(Context context, Intent intent, String eventType) {
         BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
         String name = "(Unknown)";
         String address = "--";
@@ -76,6 +76,12 @@ public class BluetoothEventReceiver extends BroadcastReceiver {
         }
 
         LogManager.getInstance().addLog(eventType, name, address, detail.toString());
+
+        if ("CONNECTED".equals(eventType)) {
+            AutomationController.getInstance(context).onBluetoothConnected(address, name);
+        } else if ("DISCONNECTED".equals(eventType)) {
+            AutomationController.getInstance(context).onBluetoothDisconnected(address, name);
+        }
     }
 
     private void handleStateChanged(Intent intent) {

@@ -4,24 +4,16 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/white"
-    android:padding="8dp">
+    android:padding="6dp">
 
     <!-- Header -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="SC803 自动热点 (M2: 无障碍控制)"
+        android:text="SC803 自动热点"
         android:textColor="@color/black"
         android:textSize="17sp"
         android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Android 8.1 API 27 | 免Root 无障碍模拟点击"
-        android:textColor="@color/dark_gray"
-        android:textSize="11sp"
-        android:layout_marginBottom="4dp" />
 
     <!-- Status Card -->
     <LinearLayout
@@ -30,16 +22,26 @@
         android:orientation="vertical"
         android:background="@drawable/card_border"
         android:padding="6dp"
-        android:layout_marginBottom="6dp">
+        android:layout_marginTop="3dp"
+        android:layout_marginBottom="4dp">
 
         <TextView
-            android:id="@+id/tv_bt_status"
+            android:id="@+id/tv_automation_state"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="蓝牙: 检测中..."
+            android:text="自动化状态: 待机中 (飞行ON+蓝牙ON)"
             android:textColor="@color/black"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_target_device"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="目标设备: (未设置，监听任意连接)"
+            android:textColor="@color/dark_gray"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp" />
 
         <View
             android:layout_width="match_parent"
@@ -48,21 +50,29 @@
             android:layout_marginTop="3dp"
             android:layout_marginBottom="3dp" />
 
-        <TextView
-            android:id="@+id/tv_airplane_status"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="飞行模式: 检测中..."
-            android:textColor="@color/black"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:orientation="horizontal">
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider_color"
-            android:layout_marginTop="3dp"
-            android:layout_marginBottom="3dp" />
+            <TextView
+                android:id="@+id/tv_bt_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="蓝牙: 检测中..."
+                android:textColor="@color/black"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_airplane_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="飞行模式: OFF"
+                android:textColor="@color/black"
+                android:textSize="11sp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_accessibility_status"
@@ -70,48 +80,23 @@
             android:layout_height="wrap_content"
             android:text="无障碍服务: 检测中..."
             android:textColor="@color/black"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/divider_color"
-            android:layout_marginTop="3dp"
-            android:layout_marginBottom="3dp" />
-
-        <TextView
-            android:id="@+id/tv_service_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="前台探测服务: 运行中"
-            android:textColor="@color/dark_gray"
-            android:textSize="12sp" />
+            android:textSize="11sp"
+            android:layout_marginTop="2dp" />
     </LinearLayout>
 
     <!-- Enable Accessibility Button (Shown if not enabled) -->
     <Button
         android:id="@+id/btn_open_accessibility"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="34dp"
         android:text="⚠️ 点击跳转开启系统无障碍服务"
         android:textColor="@color/white"
         android:background="@color/black"
-        android:textSize="12sp"
+        android:textSize="11sp"
         android:textStyle="bold"
-        android:layout_marginBottom="6dp" />
+        android:layout_marginBottom="4dp" />
 
-    <!-- M2 Manual Controls Label -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="M2 手动无障碍控制测试:"
-        android:textColor="@color/black"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="2dp" />
-
-    <!-- M2 Controls Row 1: Airplane OFF, Airplane ON, BT ON -->
+    <!-- Automation Controls Row: Toggle Auto Mode & Select Target Device -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -119,71 +104,99 @@
         android:layout_marginBottom="4dp">
 
         <Button
-            android:id="@+id/btn_airplane_off"
+            android:id="@+id/btn_toggle_auto"
             android:layout_width="0dp"
-            android:layout_height="38dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            android:text="退出飞行"
+            android:text="自动控制: 已停止"
             android:textColor="@color/black"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:background="@drawable/btn_border"
-            android:layout_marginEnd="3dp" />
+            android:layout_marginEnd="2dp" />
 
         <Button
-            android:id="@+id/btn_airplane_on"
+            android:id="@+id/btn_select_device"
             android:layout_width="0dp"
-            android:layout_height="38dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            android:text="开启飞行"
+            android:text="选择目标蓝牙"
             android:textColor="@color/black"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:background="@drawable/btn_border"
-            android:layout_marginStart="2dp"
-            android:layout_marginEnd="3dp" />
-
-        <Button
-            android:id="@+id/btn_bluetooth_on"
-            android:layout_width="0dp"
-            android:layout_height="38dp"
-            android:layout_weight="1"
-            android:text="开启蓝牙"
-            android:textColor="@color/black"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:background="@drawable/btn_border"
             android:layout_marginStart="2dp" />
     </LinearLayout>
 
-    <!-- M2 Controls Row 2: Hotspot ON, Hotspot OFF -->
+    <!-- Manual Testing Controls (Milestone 2) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="6dp">
+        android:layout_marginBottom="3dp">
+
+        <Button
+            android:id="@+id/btn_airplane_off"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="退出飞行"
+            android:textColor="@color/black"
+            android:textSize="11sp"
+            android:background="@drawable/btn_border"
+            android:layout_marginEnd="2dp" />
+
+        <Button
+            android:id="@+id/btn_airplane_on"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="开启飞行"
+            android:textColor="@color/black"
+            android:textSize="11sp"
+            android:background="@drawable/btn_border"
+            android:layout_marginStart="1dp"
+            android:layout_marginEnd="2dp" />
+
+        <Button
+            android:id="@+id/btn_bluetooth_on"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="开启蓝牙"
+            android:textColor="@color/black"
+            android:textSize="11sp"
+            android:background="@drawable/btn_border"
+            android:layout_marginStart="1dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="4dp">
 
         <Button
             android:id="@+id/btn_hotspot_on"
             android:layout_width="0dp"
-            android:layout_height="38dp"
+            android:layout_height="32dp"
             android:layout_weight="1"
-            android:text="🔥 开启 WLAN 热点"
+            android:text="开启 WLAN 热点"
             android:textColor="@color/black"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:background="@drawable/btn_border"
-            android:layout_marginEnd="3dp" />
+            android:layout_marginEnd="2dp" />
 
         <Button
             android:id="@+id/btn_hotspot_off"
             android:layout_width="0dp"
-            android:layout_height="38dp"
+            android:layout_height="32dp"
             android:layout_weight="1"
             android:text="关闭 WLAN 热点"
             android:textColor="@color/black"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:background="@drawable/btn_border"
-            android:layout_marginStart="3dp" />
+            android:layout_marginStart="2dp" />
     </LinearLayout>
 
     <!-- Toolbar: Copy, Clear, Refresh -->
@@ -191,41 +204,41 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="4dp">
+        android:layout_marginBottom="3dp">
 
         <Button
             android:id="@+id/btn_copy_logs"
             android:layout_width="0dp"
-            android:layout_height="34dp"
+            android:layout_height="30dp"
             android:layout_weight="1"
             android:text="复制日志"
             android:textColor="@color/black"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:background="@drawable/btn_border"
-            android:layout_marginEnd="3dp" />
+            android:layout_marginEnd="2dp" />
 
         <Button
             android:id="@+id/btn_clear_logs"
             android:layout_width="0dp"
-            android:layout_height="34dp"
+            android:layout_height="30dp"
             android:layout_weight="1"
             android:text="清空"
             android:textColor="@color/black"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:background="@drawable/btn_border"
-            android:layout_marginStart="2dp"
-            android:layout_marginEnd="3dp" />
+            android:layout_marginStart="1dp"
+            android:layout_marginEnd="2dp" />
 
         <Button
             android:id="@+id/btn_refresh"
             android:layout_width="0dp"
-            android:layout_height="34dp"
+            android:layout_height="30dp"
             android:layout_weight="1"
-            android:text="刷新状态"
+            android:text="刷新"
             android:textColor="@color/black"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:background="@drawable/btn_border"
-            android:layout_marginStart="2dp" />
+            android:layout_marginStart="1dp" />
     </LinearLayout>
 
     <!-- Log Section Title -->
@@ -235,7 +248,7 @@
         android:layout_height="wrap_content"
         android:text="事件日志 (共 0 条):"
         android:textColor="@color/black"
-        android:textSize="13sp"
+        android:textSize="12sp"
         android:textStyle="bold"
         android:layout_marginBottom="2dp" />
 
